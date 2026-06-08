@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>背單字卡片 - Flashcard App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 導航標籤 -->
+    <div class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">📚 背單字卡片</h1>
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-tab="study">📖 學習</button>
+                <button class="nav-tab" data-tab="manage">⚙️ 管理</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 學習視圖 -->
+    <div id="study-view" class="view active">
+        <div class="container">
+            <!-- 標題 -->
+            <div class="header">
+                <p class="progress">第 <span id="current">1</span> / <span id="total">0</span> 個單字</p>
+            </div>
+
+            <!-- 主要卡片區域 -->
+            <div class="card-wrapper">
+                <div class="card" id="card">
+                    <!-- 正面（英文） -->
+                    <div class="card-face card-front">
+                        <div class="card-content">
+                            <p class="label">英文單字</p>
+                            <h2 id="word">-</h2>
+                            <p class="hint">點擊卡片翻頁</p>
+                        </div>
+                    </div>
+
+                    <!-- 背面（中文+詞性+音標+例句+字根） -->
+                    <div class="card-face card-back">
+                        <div class="card-content">
+                            <div class="back-section">
+                                <div class="translation-section">
+                                    <p class="label">翻譯</p>
+                                    <h3 id="translation">-</h3>
+                                </div>
+
+                                <div class="info-row">
+                                    <div class="info-item">
+                                        <span class="pos-label">詞性：</span>
+                                        <span id="pos">-</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="pos-label">音標：</span>
+                                        <span id="phonetic">-</span>
+                                    </div>
+                                </div>
+
+                                <div class="section" id="exampleSection" style="display:none;">
+                                    <p class="section-label">例句</p>
+                                    <p id="example" class="example-text">-</p>
+                                </div>
+
+                                <div class="section" id="etymologySection" style="display:none;">
+                                    <p class="section-label">字根分析</p>
+                                    <p id="etymology" class="etymology-text">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制按鈕 -->
+            <div class="controls">
+                <button class="btn btn-prev" id="prevBtn">← 上一個</button>
+                <button class="btn btn-flip" id="flipBtn">🔄 翻轉卡片</button>
+                <button class="btn btn-next" id="nextBtn">下一個 →</button>
+            </div>
+
+            <!-- 底部資訊 -->
+            <div class="footer">
+                <p>左右鍵切換單字｜空白鍵翻轉卡片｜點擊卡片翻轉</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理視圖 -->
+    <div id="manage-view" class="view">
+        <div class="container manage-container">
+            <div class="header">
+                <h2>📝 管理單字</h2>
+            </div>
+
+            <!-- 新增表單 -->
+            <div class="form-card">
+                <h3>新增單字</h3>
+                <form id="addWordForm">
+                    <div class="form-group">
+                        <label for="englishWord">英文單字 *</label>
+                        <div class="input-group">
+                            <input type="text" id="englishWord" placeholder="輸入英文單字" required>
+                            <button type="button" class="btn-auto" id="autoFillBtn">🔄 自動填入</button>
+                        </div>
+                        <div id="autoFillStatus" class="status-message"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="chineseTranslation">中文翻譯 *</label>
+                        <input type="text" id="chineseTranslation" placeholder="輸入中文翻譯" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="partOfSpeech">詞性</label>
+                            <input type="text" id="partOfSpeech" placeholder="例：noun, verb">
+                        </div>
+                        <div class="form-group">
+                            <label for="phonetic">音標</label>
+                            <input type="text" id="phonetic" placeholder="例：/təˈmɑːtəʊ/">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="example">例句</label>
+                        <textarea id="example" placeholder="輸入例句（可選）" rows="2"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="etymology">字根分析</label>
+                        <textarea id="etymology" placeholder="輸入字根分析（可選）" rows="2"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-submit">✅ 新增單字</button>
+                </form>
+            </div>
+
+            <!-- 單字列表 -->
+            <div class="word-list-card">
+                <h3>已有單字 (<span id="wordCount">0</span>)</h3>
+                <div id="wordList" class="word-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
