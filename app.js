@@ -90,31 +90,39 @@ function switchView(e) {
 
 // ===== 本地存儲 =====
 function loadWordsFromStorage() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-        wordDatabase = JSON.parse(stored);
-    } else {
-        // 預設單字
-        wordDatabase = [
-            {
-                word: 'Serendipity',
-                translation: '巧合；幸運的發現',
-                pos: 'noun',
-                phonetic: '/ˌserənˈdɪpɪti/',
-                example: 'Finding this old letter was pure serendipity.',
-                etymology: 'From Persian fairy tale "The Three Princes of Serendip"'
-            },
-            {
-                word: 'Ephemeral',
-                translation: '短暫的；易消逝的',
-                pos: 'adjective',
-                phonetic: '/ɪˈfem(ə)rəl/',
-                example: 'The beauty of cherry blossoms is ephemeral, lasting only a few weeks.',
-                etymology: 'From Greek "ephemerios" meaning "lasting only a day"'
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+                wordDatabase = parsed;
+                return;
             }
-        ];
-        saveWordsToStorage();
+        }
+    } catch (error) {
+        console.warn('讀取本地單字失敗，將使用預設資料:', error);
     }
+
+    // 預設單字
+    wordDatabase = [
+        {
+            word: 'Serendipity',
+            translation: '巧合；幸運的發現',
+            pos: 'noun',
+            phonetic: '/ˌserənˈdɪpɪti/',
+            example: 'Finding this old letter was pure serendipity.',
+            etymology: 'From Persian fairy tale "The Three Princes of Serendip"'
+        },
+        {
+            word: 'Ephemeral',
+            translation: '短暫的；易消逝的',
+            pos: 'adjective',
+            phonetic: '/ɪˈfem(ə)rəl/',
+            example: 'The beauty of cherry blossoms is ephemeral, lasting only a few weeks.',
+            etymology: 'From Greek "ephemerios" meaning "lasting only a day"'
+        }
+    ];
+    saveWordsToStorage();
 }
 
 function saveWordsToStorage() {
@@ -201,9 +209,57 @@ function handleKeyboard(e) {
 }
 
 // ===== API 自動填入 =====
+function getFirstDefinition(entry) {
+    if (!entry || !Array.isArray(entry.meanings)) return '';
+
+    for (const meaning of entry.meanings) {
+        if (Array.isArray(meaning.definitions) && meaning.definitions.length > 0) {
+            return meaning.definitions[0].definition || '';
+        }
+    }
+
+    return '';
+}
+
+function getFirstExample(entry) {
+    if (!entry || !Array.isArray(entry.meanings)) return '';
+
+    for (const meaning of entry.meanings) {
+        if (Array.isArray(meaning.definitions) && meaning.definitions.length > 0) {
+            return meaning.definitions[0].example || '';
+        }
+    }
+
+    return '';
+}
+
+function getFirstPartOfSpeech(entry) {
+    if (!entry || !Array.isArray(entry.meanings) || entry.meanings.length === 0) return '';
+    return entry.meanings[0].partOfSpeech || '';
+}
+
+function getPhoneticText(entry) {
+    if (!entry) return '';
+    if (entry.phonetic) return entry.phonetic;
+    if (Array.isArray(entry.phonetics) && entry.phonetics.length > 0) {
+        return entry.phonetics[0].text || '';
+    }
+    return '';
+}
+
+function getEtymologyText(entry) {
+    if (!entry) return '';
+    if (entry.etymology) return entry.etymology;
+    if (Array.isArray(entry.etymologies) && entry.etymologies.length > 0) {
+        return entry.etymologies.join(' ');
+    }
+    if (entry.origin) return entry.origin;
+    return '';
+}
+
 async function autoFillWord() {
     const word = englishWordInput.value.trim();
-    
+
     if (!word) {
         showStatus('請輸入英文單字', 'error');
         return;
@@ -213,49 +269,35 @@ async function autoFillWord() {
     showStatus('⏳ 正在查詢...', 'loading');
 
     try {
-        const response = await fetch(`${API_URL}${word.toLowerCase()}`);
-        
+        const encodedWord = encodeURIComponent(word.toLowerCase());
+        const response = await fetch(`${API_URL}${encodedWord}`);
+
         if (!response.ok) {
-            throw new Error('單字不存在');
+            throw new Error('查詢失敗，請確認單字是否正確');
         }
 
         const data = await response.json();
-        const firstEntry = data[0];
+        const firstEntry = Array.isArray(data) && data.length > 0 ? data[0] : null;
 
-        // 提取詞性
-        let pos = '-';
-        if (firstEntry.meanings && firstEntry.meanings[0]) {
-            pos = firstEntry.meanings[0].partOfSpeech;
+        if (!firstEntry) {
+            throw new Error('API 沒有回傳有效資料');
         }
 
-        // 提取音標
-        let phonetic = '-';
-        if (firstEntry.phonetic) {
-            phonetic = firstEntry.phonetic;
-        }
+        const translation = getFirstDefinition(firstEntry) || '尚未取得翻譯';
+        const pos = getFirstPartOfSpeech(firstEntry) || '';
+        const phonetic = getPhoneticText(firstEntry) || '';
+        const example = getFirstExample(firstEntry) || '';
+        const etymology = getEtymologyText(firstEntry) || '';
 
-        // 提取第一個定義作為翻譯
-        let definition = '-';
-        if (firstEntry.meanings && firstEntry.meanings[0].definitions[0]) {
-            definition = firstEntry.meanings[0].definitions[0].definition;
-        }
-
-        // 提取例句
-        let example = '';
-        if (firstEntry.meanings[0].definitions[0].example) {
-            example = firstEntry.meanings[0].definitions[0].example;
-        }
-
-        // 填充表單
-        chineseTranslationInput.value = definition;
+        chineseTranslationInput.value = translation;
         partOfSpeechInput.value = pos;
         phoneticInput.value = phonetic;
         exampleInput.value = example;
-        etymologyInput.value = ''; // API 沒有字根分析，用戶可自行填寫
+        etymologyInput.value = etymology;
 
-        showStatus('✅ 填入成功！', 'success');
+        showStatus('✅ 已自動填入相關資訊', 'success');
     } catch (error) {
-        showStatus(`❌ 錯誤：${error.message}`, 'error');
+        showStatus(`❌ ${error.message}`, 'error');
     } finally {
         autoFillBtn.disabled = false;
     }
@@ -289,26 +331,28 @@ function handleAddWord(e) {
     }
 
     // 新增單字
-    wordDatabase.push({
+    const newWord = {
         word,
         translation,
         pos: pos || '-',
         phonetic: phonetic || '-',
         example,
         etymology
-    });
+    };
 
+    wordDatabase.push(newWord);
     saveWordsToStorage();
-    
+
     // 重置表單
     addWordForm.reset();
-    autoFillStatus.textContent = '';
+    showStatus('', '');
+
+    // 顯示新加入的單字
+    currentIndex = wordDatabase.length - 1;
+    updateStudyView();
+    renderWordList();
 
     alert('✅ 單字新增成功！');
-    
-    // 更新列表
-    renderWordList();
-    updateStudyView();
 }
 
 // ===== 渲染單字列表 =====
