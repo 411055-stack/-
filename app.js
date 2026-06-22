@@ -1,6 +1,7 @@
 // ===== 配置 =====
 const STORAGE_KEY = 'flashcardWords';
 const API_URL = 'https://api.dictionaryapi.dev/api/v2/entries/english/';
+const REMOTE_API_URL = 'https://script.google.com/macros/s/AKfycbwpUhV1qJKEIBz1y0RLbAuLAR5FHsmK2ZDOeBFmbc-V9KifMAv6wRnkWNW5WfHeq2jq/exec'; // 例如：https://script.google.com/macros/s/.../exec
 
 // ===== DOM 元素 - 導航 =====
 const navTabs = document.querySelectorAll('.nav-tab');
@@ -43,9 +44,9 @@ let currentIndex = 0;
 let isFlipped = false;
 
 // ===== 初始化 =====
-function init() {
-    loadWordsFromStorage();
+async function init() {
     setupEventListeners();
+    await loadWordsFromRemoteOrStorage();
     updateStudyView();
     renderWordList();
 }
@@ -127,8 +128,59 @@ function loadWordsFromStorage() {
 
 function saveWordsToStorage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(wordDatabase));
+    syncWordsToRemote();
 }
 
+async function loadWordsFromRemoteOrStorage() {
+    if (REMOTE_API_URL) {
+        const remoteLoaded = await loadWordsFromRemote();
+        if (remoteLoaded) {
+            return;
+        }
+    }
+    loadWordsFromStorage();
+}
+
+async function loadWordsFromRemote() {
+    if (!REMOTE_API_URL) return false;
+
+    try {
+        const response = await fetch(REMOTE_API_URL);
+        if (!response.ok) {
+            throw new Error('remote fetch failed');
+        }
+
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+            wordDatabase = data;
+            saveWordsToStorage();
+            return true;
+        }
+    } catch (error) {
+        console.warn('無法從遠端取得資料，改用本地資料:', error);
+    }
+
+    return false;
+}
+
+async function syncWordsToRemote() {
+    if (!REMOTE_API_URL) return;
+
+    try {
+        await fetch(REMOTE_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'saveWords',
+                words: wordDatabase
+            })
+        });
+    } catch (error) {
+        console.warn('同步到遠端失敗:', error);
+    }
+}
 // ===== 更新卡片 =====
 function updateStudyView() {
     if (wordDatabase.length === 0) {

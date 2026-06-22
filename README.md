@@ -84,10 +84,58 @@
 
 ## 🔌 API 說明
 
+### 英文單字自動填入
 應用使用 **Free Dictionary API**：
 - **API 端點**：`https://api.dictionaryapi.dev/api/v2/entries/english/{word}`
 - **功能**：免費獲取英文單字的定義、詞性、音標、例句等
 - **無需認證**：無需 API Key，直接使用
+
+### 連接 Google Sheets（可選）
+如果你要把單字資料存到試算表，可以在 [app.js](app.js) 裡把 `REMOTE_API_URL` 改成你的 Google Apps Script 網址。
+
+範例：
+```js
+const REMOTE_API_URL = 'https://script.google.com/macros/s/你的腳本ID/exec';
+```
+
+Google Apps Script 範例：
+```javascript
+function doGet(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Words');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((header, index) => {
+      obj[header] = row[index] || '';
+    });
+    return obj;
+  });
+  return ContentService.createTextOutput(JSON.stringify(rows))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const payload = JSON.parse(e.postData.contents || '{}');
+  const words = payload.words || [];
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Words');
+  sheet.clear();
+  const headers = ['word', 'translation', 'pos', 'phonetic', 'example', 'etymology'];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  if (words.length > 0) {
+    const values = words.map(word => [
+      word.word || '',
+      word.translation || '',
+      word.pos || '',
+      word.phonetic || '',
+      word.example || '',
+      word.etymology || ''
+    ]);
+    sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+  }
+  return ContentService.createTextOutput(JSON.stringify({ success: true }));
+}
+```
 
 ### 自動填入欄位對應
 
